@@ -1,0 +1,28 @@
+﻿#shell {
+    width: 100%;
+    min-height: 600px;
+    font-family: 'Cascadia Mono';
+    user-select:all;
+    -webkit-user-select:all;
+}
+@media (max-width: 767px) {
+        .input-container input {
+            width: 70%;
+            margin-bottom: 70px;
+        }
+}
+
+.input-container {
+    position: fixed;
+    bottom: 0;
+    padding: 10px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+    .input-container input {
+
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+    }

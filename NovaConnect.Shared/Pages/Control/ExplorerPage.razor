@@ -1,0 +1,160 @@
+﻿@page "/control/files"
+
+@using NovaConnect.Runtimes;
+@using NovaConnect.Runtimes.Models;
+@using NovaConnect.Runtimes.Models.Net;
+@using Newtonsoft.Json;
+@using System.Diagnostics;
+
+
+<div class="relative w-full overflow-auto">
+	<div class="w-full">
+		<input @bind-value="NowPath" type="text" @onkeydown="OnKeyDown" placeholder="Enter command..." style="color:#000" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+
+	</div>
+
+	<table class="w-full caption-bottom text-sm">
+		@if (IsDrive)
+		{
+			<div class="container">
+				@foreach (var drive in Drives)
+				{
+					<div @onclick="()=>SetPath(drive.Name)" class="card mb-3">
+						<div class="card-body">
+							<h5 class="card-title">@drive.Name</h5>
+							<p class="card-text">Label: @drive.Label</p>
+							<p class="card-text">Total Capacity: @drive.Total MB</p>
+							<p class="card-text">Used Space: @drive.Used MB</p>
+						</div>
+					</div>
+				}
+			</div>
+		}
+		else
+		{
+			<thead class="[&amp;_tr]:border-b">
+				<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+					<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 w-[280px]">FileName</th>
+					<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">Creat</th>
+					<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">Update</th>
+					<th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-right">Size</th>
+				</tr>
+			</thead>
+			<tbody class=" [&_tr:last-child]:border-0">
+				@foreach (var file in Files)
+				{
+					<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+						<td @onclick="()=>SetPath(Path.Combine(NowPath,file.FileName))" tag="WideOnly" class="filename p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">@file.FileName</td>
+						<td tag="WideOnly" class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@file.CreatTime</td>
+						<td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@file.LastWrite</td>
+						<td tag="WideOnly" class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@file.FileSize</td>
+					</tr>
+				}
+			</tbody>
+		}
+	</table>
+	<div style="display:none">
+		@(Files = new() { })
+		@(Drives = new() { })
+	</div>
+</div>
+
+@code{
+	public bool IsDrive = true;
+	public List<DriveInfoType> Drives = new();
+	public List<FileInfoType> Files = new();
+	public string NowPath = "HOME";
+
+	public List<string> Todo = new() { };
+	private System.Timers.Timer _timer;
+
+	protected override void OnInitialized()
+	{
+		Task.Run(() =>
+		{
+			Debug.WriteLine("服务注册");
+			_timer = new System.Timers.Timer(1500);
+			_timer.Elapsed += OnTimedEvent;
+			_timer.AutoReset = true;
+			_timer.Enabled = true;
+		});
+		GetFiles();
+	}
+
+	private void OnKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter")
+		{
+			if (NowPath != "")
+			{
+				GetFiles();
+			}
+		}
+	}
+
+	public void SetPath(string path)
+	{
+		NowPath = path;
+		GetFiles();
+	}
+
+	public void GetFiles()
+	{
+		var result = ApplicationRuntimes.apiClient.AddMessage(AuthModel.Token(), ApplicationRuntimes.Connect.SessionID, $"FILES\n{NowPath}");
+		if (result != null)
+		{
+			Todo.Add(result.Data);
+		}
+	}
+
+	private async void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+	{
+		if (ApplicationRuntimes.Connect.IsConnect && Todo.Count > 0)
+		{
+			
+			foreach (var workID in Todo.ToList())
+			{
+				var result = ApplicationRuntimes.apiClient.GetWork(AuthModel.Token(), ApplicationRuntimes.Connect.SessionID, workID);
+				if (result.Data.State == 1)
+				{
+					var lines = result.Data.Result.Split("\\n");
+					foreach (var line in lines)
+					{
+						var info = line.Split("&");
+						Debug.WriteLine($"{line} , {info.Length}");
+						if (info.Length > 3)
+						{
+							if (NowPath == "HOME")
+							{
+								//盘列表
+								IsDrive = true;
+								DriveInfoType driveInfo = new();
+								driveInfo.Name = info[0];
+								driveInfo.Label = info[1];
+								driveInfo.Total = info[2];
+								driveInfo.Used = info[3];
+								Drives.Add(driveInfo);
+							}
+							else
+							{
+								//文件夹列表
+								IsDrive = false;
+								FileInfoType fileInfo = new();
+								fileInfo.FileName = Path.GetFileName(info[0]);
+								fileInfo.CreatTime = info[1];
+								fileInfo.LastWrite = info[2];
+								fileInfo.FileSize = info[3];
+								Files.Add(fileInfo);
+							}
+						}
+
+					}
+					await JSRuntime.InvokeVoidAsync("console.log", $"待办事项{workID}已完成并移除");
+					await JSRuntime.InvokeVoidAsync("console.log", $"{result.Data.Result}");
+					Todo.Remove(workID);
+				}
+			}
+		}
+	}
+
+}

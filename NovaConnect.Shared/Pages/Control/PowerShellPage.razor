@@ -1,0 +1,103 @@
+﻿@page "/control/ps"
+
+@using NovaConnect.Runtimes;
+@using NovaConnect.Runtimes.Models.Net;
+@using Newtonsoft.Json;
+@using System.Diagnostics;
+
+<div style="user-select:all;" id="shell"/>
+
+<div>
+    <div class="input-container w-full">
+        <input id="inputBtn" type="text" @onkeydown="OnKeyDown" placeholder="Enter command..." class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+    </div>
+</div>
+
+<script>
+    var inputBTN = document.getElementById("inputBtn");
+    var shellBOX = document.getElementById("shell");
+
+    function AddToShell(text,color) {
+    if(color == null)
+    color = "#000";
+    var element = `<p>${text}<p>`;
+    shellBOX.innerHTML += element
+    inputBTN.value = "";
+    console.log(element);
+    }
+    function GetInput(){
+    return inputBTN.value;
+    }
+</script>
+
+@code {
+    public string inputText = "";
+    public List<string> Todo = new() { };
+    private System.Timers.Timer _timer;
+
+    protected override void OnInitialized()
+    {
+        Task.Run(()=>{
+            Debug.WriteLine("服务注册");
+            _timer = new System.Timers.Timer(1500);
+            _timer.Elapsed += OnTimedEvent;
+            _timer.AutoReset = true;
+            _timer.Enabled = true;
+        });
+    }
+
+    private async void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        if (ApplicationRuntimes.Connect.IsConnect && Todo.Count > 0)
+        {
+            foreach (var workID in Todo.ToList())
+            {
+                var result = ApplicationRuntimes.apiClient.GetWork(AuthModel.Token(), ApplicationRuntimes.Connect.SessionID, workID);
+                if (result.Data.State == 1)
+                {
+                    await JSRuntime.InvokeVoidAsync("AddToShell", $"<span style='color:#6d7876'>[{DateTime.Now.ToString("HH:mm:ss")}] {ApplicationRuntimes.Connect.SessionID}</span><span> >{result.Data.Result.Replace("\\n", "<br>").Replace("\\r", "\r")}</span>");
+                    await JSRuntime.InvokeVoidAsync("console.log", $"待办事项{workID}已完成并移除");
+                    Todo.Remove(workID);
+                }
+            }
+        }
+    }
+    public static string EscapeSymbols(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        string[] symbols = { "&", "+", "=", "?" };
+        string[] escapeSymbols = { " {amp;} ", " {plus;} ", " {eq;} ", " {quest;} " };
+
+        for (int i = 0; i < symbols.Length; i++)
+        {
+            input = input.Replace(symbols[i], escapeSymbols[i]);
+        }
+
+        return input;
+    }
+
+    private async void OnKeyDown(KeyboardEventArgs keys){
+        var key = keys.Key;
+        if (key != null && key.ToLower() == "enter")
+        {
+            var info = $"<span style='color:#6d7876'>[{DateTime.Now.ToString("HH:mm:ss")}] {ApplicationRuntimes.Connect.SessionID}></span> ";
+            inputText = await JSRuntime.InvokeAsync<string>("GetInput");
+            await JSRuntime.InvokeVoidAsync("AddToShell", $"{info} {inputText}");
+
+            var result = ApplicationRuntimes.apiClient.AddMessage(AuthModel.Token(), ApplicationRuntimes.Connect.SessionID, $"SHELL\n{EscapeSymbols(inputText)}");
+
+            if (result != null)
+            {
+                Todo.Add(result.Data);
+                await JSRuntime.InvokeVoidAsync("AddToShell", $"<span style='color:green'>> Success, to-do code: {result.Data}</span>".Replace("\n", ""));
+            }
+            else
+                await JSRuntime.InvokeVoidAsync("AddToShell", $"{info} <span style='color:red'>>Failed to execute command</span>");
+            
+        }
+    }
+}

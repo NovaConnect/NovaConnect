@@ -1,0 +1,138 @@
+﻿@page "/clientlist"
+
+@using NovaConnect.Runtimes;
+@using NovaConnect.Runtimes.Models.Net;
+@using Newtonsoft.Json;
+@using NovaConnect.Runtimes.Models.Enum;
+
+<div class="relative w-full overflow-auto">
+
+	<table class="w-full caption-bottom text-sm">
+		<caption class="mt-4 text-sm text-muted-foreground">This list shows all the available devices that are connected</caption>
+		<thead class="[&amp;_tr]:border-b">
+			<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+				<th tag='WideOnly' class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 w-[100px]">ID</th>
+				<th tag='WideOnly' class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">IP:Port</th>
+				<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">UserName</th>
+				<th tag='WideOnly' class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">FileName</th>
+				<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">ConnectTime</th>
+				<th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-right">
+					<button id="reflist" @onclick="() => GetClients()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-4 py-2">
+						<svg style="fill:#000" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 30 30">
+							<path d="M 15 3 C 12.031398 3 9.3028202 4.0834384 7.2070312 5.875 A 1.0001 1.0001 0 1 0 8.5058594 7.3945312 C 10.25407 5.9000929 12.516602 5 15 5 C 20.19656 5 24.450989 8.9379267 24.951172 14 L 22 14 L 26 20 L 30 14 L 26.949219 14 C 26.437925 7.8516588 21.277839 3 15 3 z M 4 10 L 0 16 L 3.0507812 16 C 3.562075 22.148341 8.7221607 27 15 27 C 17.968602 27 20.69718 25.916562 22.792969 24.125 A 1.0001 1.0001 0 1 0 21.494141 22.605469 C 19.74593 24.099907 17.483398 25 15 25 C 9.80344 25 5.5490109 21.062074 5.0488281 16 L 8 16 L 4 10 z"></path>
+						</svg>
+						<text tag='WideOnly'>Refresh</text>
+					</button>
+				</th>
+
+
+			</tr>
+		</thead>
+		@if (Clients == null)
+		{
+			<h3 class="mt-4 text-sm">Loading...</h3>
+		}
+		else
+		{
+			@if (Clients.Count == 0)
+			{
+				<h3 class="mt-4 text-sm">No clients found.</h3>
+			}
+			else
+			{
+				<tbody class=" [&_tr:last-child]:border-0">
+					@foreach (var client in Clients)
+					{
+						<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+							<td tag="WideOnly" class="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium">@client.ClientID</td>
+							<td tag="WideOnly" class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@client.Ip:@client.Port</td>
+							<td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@client.UserName</td>
+							<td tag="WideOnly" class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@client.FileName</td>
+							<td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">@client.ConnectTime.ToString("dd日HH:mm:ss")</td>
+							<td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+								@if ($"{client.Ip}:{client.Port}" == $"{ApplicationRuntimes.Connect.IP}:{ApplicationRuntimes.Connect.Port}")
+								{
+									<button @onclick="Disonnect"
+									class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background border border-input h-8 w-8">
+										<img style="width:22px;height:22px" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABgElEQVR4nO2WQUoDQRBFn+7UuI29TZbqIrdQLyDoFTIHEHIPQTSeITlHXClxBLMM2epGBBeJDFSgKHvamdCdheZDMzDdU/9PdXX9hg3+ERzQTRV8F+gBL8AXMAPugbYiz4EFkMUmPwAeJLgd78C5Is9FTBR0gY4KPgFOgX3gGBgaMVHJMwk6l+cYaJo1W8C1ElBkIhqc+vO5ZMIHLeINaKUSkQfSW4gYyLpbIqOjtiEk4kjWTFNuwyIgoiHzHynIc3MafCLOZO5xlaPmAqdAk5XVhJMjWry/qkOe/ZJWnzhbEzozI2AnRYGFaiLUJ4JoykdVCsyS2z8P9YlSY1n29nGFAqtSE7UMqCcfvaq0VWk6vppYyYKfhejEEyyJq1l8Csnej5k1iZgJwWHJfHIRfQk+ECNZu4i2WGcR/AbYjtQnauFCXSTuPCJ8fSLaXc+p9C7HUCy1IcYyMX0i2m3Xmb29VNthx6hue62CzLOnLbnJTMXPn8TVahlLDAve4G/iG1ibr4KbuJdHAAAAAElFTkSuQmCC" alt="disconnected">	
+									</button>
+								}else{
+									if(ApplicationRuntimes.Connect.IsConnect){
+										<button disabled class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background border border-input h-8 w-8">
+											<svg xmlns='http://www.w3.org/2000/svg' x='0px' y='0px' width='22' height='22' viewBox='0 0 50 50'>
+												<path d='M 41 2 C 37.145851 2 34 5.1458514 34 9 C 34 10.842988 34.724355 12.518937 35.896484 13.771484 L 27.525391 24 L 15.919922 24 C 15.430748 20.617539 12.513828 18 9 18 C 5.1458514 18 2 21.145851 2 25 C 2 28.854149 5.1458514 32 9 32 C 12.513828 32 15.430748 29.382461 15.919922 26 L 27.501953 26 L 35.535156 36.640625 C 34.5767 37.838633 34 39.353257 34 41 C 34 44.854149 37.145851 48 41 48 C 44.854149 48 48 44.854149 48 41 C 48 37.145851 44.854149 34 41 34 C 39.515247 34 38.13907 34.471256 37.003906 35.265625 L 29.271484 25.025391 L 37.455078 15.021484 C 38.496931 15.638103 39.706395 16 41 16 C 44.854149 16 48 12.854149 48 9 C 48 5.1458514 44.854149 2 41 2 z M 41 4 C 43.773268 4 46 6.2267316 46 9 C 46 11.773268 43.773268 14 41 14 C 38.226732 14 36 11.773268 36 9 C 36 6.2267316 38.226732 4 41 4 z M 9 20 C 11.773268 20 14 22.226732 14 25 C 14 27.773268 11.773268 30 9 30 C 6.2267316 30 4 27.773268 4 25 C 4 22.226732 6.2267316 20 9 20 z M 41 36 C 43.773268 36 46 38.226732 46 41 C 46 43.773268 43.773268 46 41 46 C 38.226732 46 36 43.773268 36 41 C 36 38.226732 38.226732 36 41 36 z'></path>
+											</svg>
+										</button>
+									}else{
+										<button @onclick="() => Connect(client.Ip,client.Port)"
+												class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background border border-input h-8 w-8">
+											<svg xmlns='http://www.w3.org/2000/svg' x='0px' y='0px' width='22' height='22' viewBox='0 0 50 50'>
+												<path d='M 41 2 C 37.145851 2 34 5.1458514 34 9 C 34 10.842988 34.724355 12.518937 35.896484 13.771484 L 27.525391 24 L 15.919922 24 C 15.430748 20.617539 12.513828 18 9 18 C 5.1458514 18 2 21.145851 2 25 C 2 28.854149 5.1458514 32 9 32 C 12.513828 32 15.430748 29.382461 15.919922 26 L 27.501953 26 L 35.535156 36.640625 C 34.5767 37.838633 34 39.353257 34 41 C 34 44.854149 37.145851 48 41 48 C 44.854149 48 48 44.854149 48 41 C 48 37.145851 44.854149 34 41 34 C 39.515247 34 38.13907 34.471256 37.003906 35.265625 L 29.271484 25.025391 L 37.455078 15.021484 C 38.496931 15.638103 39.706395 16 41 16 C 44.854149 16 48 12.854149 48 9 C 48 5.1458514 44.854149 2 41 2 z M 41 4 C 43.773268 4 46 6.2267316 46 9 C 46 11.773268 43.773268 14 41 14 C 38.226732 14 36 11.773268 36 9 C 36 6.2267316 38.226732 4 41 4 z M 9 20 C 11.773268 20 14 22.226732 14 25 C 14 27.773268 11.773268 30 9 30 C 6.2267316 30 4 27.773268 4 25 C 4 22.226732 6.2267316 20 9 20 z M 41 36 C 43.773268 36 46 38.226732 46 41 C 46 43.773268 43.773268 46 41 46 C 38.226732 46 36 43.773268 36 41 C 36 38.226732 38.226732 36 41 36 z'></path>
+											</svg>
+										</button>
+									}
+								}
+
+							</td>
+						</tr>
+					}
+					<script>WideOnly();</script>
+				</tbody>
+			}
+		}
+	</table>
+</div>
+
+<script>reflist.click();</script>
+
+@code {
+
+	List<ClientInfo> Clients = new List<ClientInfo>() { };
+
+	public List<ClientInfo> GetClients()
+	{
+		var clientsResponse = ApplicationRuntimes.apiClient.GetAllClients(AuthModel.Token());
+		if(clientsResponse != null){
+			if (clientsResponse.Code == 200)
+			{
+				var clients = clientsResponse.Data;
+				Clients = clients;
+				return clients;
+			}
+		}
+		return null;
+
+	}
+
+	async void Disonnect() {
+		var result = ApplicationRuntimes.apiClient.DisconnectSession(AuthModel.Token(), ApplicationRuntimes.Connect.SessionID);
+		if (result != null && result.Code == 200)
+		{
+			await JSRuntime.InvokeVoidAsync("swal", "The disconnection is successful.", "", "success");
+            ApplicationRuntimes.Connect.IP = "";
+			ApplicationRuntimes.Connect.Port = "";
+            ApplicationRuntimes.Connect.SessionID = "";
+            ApplicationRuntimes.Connect.IsConnect = false;
+		}
+		else
+			await JSRuntime.InvokeVoidAsync("swal", "Error", result.Data, "error");
+
+		await JSRuntime.InvokeVoidAsync("location.reload"); 
+	}
+
+	async void Connect(string Ip,int Port) {
+		var result = ApplicationRuntimes.apiClient.ConnectClient(AuthModel.Token(), Ip, Port);
+		if (result != null && result.Code == 200)
+		{
+			await JSRuntime.InvokeVoidAsync("swal", "The connection is successful", $"SessionID: {result.Data}", "success");
+			ApplicationRuntimes.Connect.IP = Ip;
+			ApplicationRuntimes.Connect.Port = Port.ToString();
+			ApplicationRuntimes.Connect.SessionID = result.Data;
+			ApplicationRuntimes.Connect.IsConnect = true;
+		}
+		else
+			await JSRuntime.InvokeVoidAsync("swal", "Error", result.Data, "error");
+
+		await JSRuntime.InvokeVoidAsync("location.reload");
+	}
+}

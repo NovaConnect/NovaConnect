@@ -1,0 +1,53 @@
+﻿@page "/dashboard"
+
+@using NovaConnect.Runtimes;
+@using NovaConnect.Runtimes.Models.Net;
+@using Newtonsoft.Json;
+
+<div class="dashboard">
+    <div class="info">
+        <p>Token：@AuthModel.Token()</p>
+    </div>
+
+    <div class="info">
+        <p>Client Count：@clientCount</p>
+    </div>
+
+    <div class="info">
+        <p>OSVersion：@Environment.OSVersion.VersionString</p>
+    </div>
+
+    <div class="info">
+        <p>Cpu Usage Total Time：@Environment.CpuUsage.TotalTime</p>
+    </div>
+
+    <div class="info">
+        <p>Machine Name：@Environment.MachineName</p>
+    </div>
+
+    <div class="info">
+        <p>User Name：@Environment.UserName</p>
+    </div>
+
+    <div class="info">
+        <p>User Domain Name：@Environment.UserDomainName</p>
+    </div>
+
+</div>
+
+@code {
+    private int clientCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientsResponse = ApplicationRuntimes.apiClient.GetAllClients(AuthModel.Token());
+        if (clientsResponse != null && clientsResponse.Code == 200)
+        {
+            clientCount = clientsResponse.Data.Count;
+            await JSRuntime.InvokeVoidAsync("swal", JsonConvert.SerializeObject(clientsResponse,Formatting.Indented));
+        }else{
+            await JSRuntime.InvokeVoidAsync("swal", "Error", "The device list failed to load", "error");
+        }
+
+    }
+}

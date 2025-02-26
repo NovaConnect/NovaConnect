@@ -1,0 +1,36 @@
+﻿@page "/control"
+
+@using NovaConnect.Runtimes;
+@using System.Collections.Generic
+
+<div class="container">
+    @foreach (var item in ApplicationRuntimes.NavItems)
+    {
+        if (item.Name == "Control" && item.Items != null && item.Items.Length > 0)
+        {
+            <div class="row">
+                @foreach (var zNav in item.Items)
+                {
+                    <div class="col-md-4">
+                        <div class="card mb-4 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">@zNav.Name</h5>
+                                <p class="card-text">@zNav.ToolTip</p>
+                                <NavLink href="@zNav.Jump" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background border border-input h-8 w-8">
+                                    @((MarkupString)zNav.Icon)
+                                </NavLink>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    void YesBtn()
+    {
+        NavigationManager.NavigateTo("http://sc.n0v4.site");
+    }
+}
